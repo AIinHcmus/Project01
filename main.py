@@ -1,3 +1,5 @@
+import heapq
+
 import pygame
 import random
 from collections import deque
@@ -16,6 +18,8 @@ WHITE = (255, 255, 255)
 YELLOW = (255, 255, 0)
 BLUE = (0, 0, 255)
 PINK = (255, 105, 180)
+ORANGE = (255, 165, 0)
+RED = (255, 0, 0)
 
 # Create game window
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -74,6 +78,59 @@ def dfs(start, goal):
     return []  # Return an empty list if no path is found
 
 
+# UCS Algorithm for Orange Ghost
+def ucs(start, goal):
+    priority_queue = [(0, start, [start])]
+    visited = set()
+
+    while priority_queue:
+        cost, (x, y), path = heapq.heappop(priority_queue)
+
+        if (x, y) == goal:
+            return path  # Return the optimal path
+
+        if (x, y) in visited:
+            continue
+
+        visited.add((x, y))
+
+        for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
+            next_pos = (x + dx, y + dy)
+
+            if 0 <= next_pos[0] < COLS and 0 <= next_pos[1] < ROWS and maze[next_pos[1]][next_pos[0]] == 0:
+                if next_pos not in visited:
+                    heapq.heappush(priority_queue, (cost + 1, next_pos, path + [next_pos]))
+
+    return []  # No valid path found
+
+
+# A* Algorithm
+def heuristic(a, b):
+    return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+def a_star(start, goal):
+    priority_queue = [(0, start, [start])]
+    visited = set()
+
+    while priority_queue:
+        cost, (x, y), path = heapq.heappop(priority_queue)
+
+        if (x, y) == goal:
+            return path
+
+        if (x, y) in visited:
+            continue
+
+        visited.add((x, y))
+        for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
+            next_pos = (x + dx, y + dy)
+            if 0 <= next_pos[0] < COLS and 0 <= next_pos[1] < ROWS and next_pos not in visited and maze[next_pos[1]][
+                next_pos[0]] == 0:
+                new_cost = cost + 1
+                priority = new_cost + heuristic(next_pos, goal)
+                heapq.heappush(priority_queue, (priority, next_pos, path + [next_pos]))
+    return []
+
 # BlueGhost Class
 class BlueGhost:
     def __init__(self, x, y, color):
@@ -115,10 +172,43 @@ class PinkGhost:
     def draw(self):
         pygame.draw.rect(screen, self.color, (self.x * GRID_SIZE, self.y * GRID_SIZE, GRID_SIZE, GRID_SIZE))
 
+# OrangeGhost Class
+class OrangeGhost:
+    def __init__(self, x, y, color):
+        self.x, self.y = x, y
+        self.color = color
+
+    def move(self):
+        if (self.x, self.y) == PACMAN_POS:
+            return
+        path = ucs((self.x, self.y), PACMAN_POS)
+        if len(path) > 1:
+            self.x, self.y = path[1]
+
+    def draw(self):
+        pygame.draw.rect(screen, self.color, (self.x * GRID_SIZE, self.y * GRID_SIZE, GRID_SIZE, GRID_SIZE))
+
+# RedGhost Class
+class RedGhost:
+    def __init__(self, x, y, color):
+        self.x, self.y = x, y
+        self.color = color
+
+    def move(self):
+        if (self.x, self.y) == PACMAN_POS:
+            return
+        path = a_star((self.x, self.y), PACMAN_POS)
+        if len(path) > 1:
+            self.x, self.y = path[1]
+
+    def draw(self):
+        pygame.draw.rect(screen, self.color, (self.x * GRID_SIZE, self.y * GRID_SIZE, GRID_SIZE, GRID_SIZE))
 
 # Initialize Ghosts
 blue_ghost = BlueGhost(8, 1, BLUE)
 pink_ghost = PinkGhost(8, 2, PINK)
+orange_ghost = OrangeGhost(8, 3, ORANGE)
+red_ghost = RedGhost(8, 4, RED)
 
 # Main Loop
 running = True
@@ -130,6 +220,8 @@ while running:
 
     blue_ghost.move()
     pink_ghost.move()
+    orange_ghost.move()
+    red_ghost.move()
 
     # Draw Maze
     for y in range(len(maze)):
@@ -145,6 +237,8 @@ while running:
     # Draw Ghosts
     blue_ghost.draw()
     pink_ghost.draw()
+    orange_ghost.draw()
+    red_ghost.draw()
 
     pygame.display.update()
     pygame.time.delay(300)
